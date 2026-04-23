@@ -1,8 +1,10 @@
 /**
  * hello-agent — the minimal Corelay Mesh end-to-end example.
  *
- * One agent, one LLM call via OpenAI, one reply printed to stdout.
+ * Uses @corelay/mesh-llm's LLMRouter to compose whichever providers the
+ * caller has configured credentials for. Primary: OpenAI. Fallback: Anthropic.
  */
+import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import {
   Agent,
@@ -11,55 +13,50 @@ import {
   run,
   type AgentConfig,
   type LLMClient,
-  type LLMRequest,
-  type LLMResponse,
 } from "@corelay/mesh-core";
+import { AnthropicClient, LLMRouter, OpenAIClient } from "@corelay/mesh-llm";
 
 const CALLER_ADDRESS = "demo/caller" as const;
 const AGENT_ADDRESS = "demo/hello" as const;
 
-const openaiClient = (apiKey: string): LLMClient => {
-  const client = new OpenAI({ apiKey });
-  return {
-    name: "openai",
-    async chat(req: LLMRequest): Promise<LLMResponse> {
-      const response = await client.chat.completions.create({
-        model: req.model,
-        messages: req.messages.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })) as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-        max_tokens: req.maxTokens,
-        temperature: req.temperature ?? 0.7,
-      });
-      const choice = response.choices[0];
-      return {
-        content: choice?.message.content ?? "",
-        model: response.model,
-        toolCalls: [],
-        usage: {
-          promptTokens: response.usage?.prompt_tokens ?? 0,
-          completionTokens: response.usage?.completion_tokens ?? 0,
-          totalTokens: response.usage?.total_tokens ?? 0,
-        },
-        finishReason: choice?.finish_reason === "length" ? "length" : "stop",
-      };
-    },
-  };
+const buildLLM = (): LLMClient => {
+  const providers: LLMClient[] = [];
+
+  if (process.env.OPENAI_API_KEY) {
+    providers.push(
+      new OpenAIClient({
+        client: new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
+      }),
+    );
+  }
+
+  if (process.env.ANTHROPIC_API_KEY) {
+    providers.push(
+      new AnthropicClient({
+        client: new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }),
+      }),
+    );
+  }
+
+  if (providers.length === 0) {
+    console.error("Set OPENAI_API_KEY and/or ANTHROPIC_API_KEY to run this example.");
+    process.exit(1);
+  }
+
+  const primary = providers[0]!.name;
+  const fallbacks = providers.slice(1).map((p) => p.name);
+
+  return new LLMRouter({ primary, fallbacks, providers });
 };
 
 const main = async () => {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    console.error("Set OPENAI_API_KEY to run this example.");
-    process.exit(1);
-  }
+  const llm = buildLLM();
 
   const agentConfig: AgentConfig = {
     name: "hello",
     description: "A friendly demo agent.",
     prompt: "You are a concise, friendly assistant. Keep replies under 50 words.",
-    model: "gpt-4o-mini",
+    model: process.env.MODEL ?? "gpt-4o-mini",
     maxResponseTokens: 200,
     welcomeMessage: "Hello! Ask me anything.",
     guardrails: "",
@@ -68,13 +65,7 @@ const main = async () => {
   };
 
   const registry = new PeerRegistry();
-  const agent = new Agent(
-    AGENT_ADDRESS,
-    agentConfig,
-    openaiClient(apiKey),
-    new MemoryInbox(),
-    registry,
-  );
+  const agent = new Agent(AGENT_ADDRESS, agentConfig, llm, new MemoryInbox(), registry);
   registry.register(agent);
   await agent.start();
 

@@ -2,13 +2,15 @@
   "name": "@loom-examples/hello-agent",
   "version": "0.0.1",
   "private": true,
-  "description": "Minimal Corelay Mesh example: one agent, real OpenAI, prints a reply.",
+  "description": "Minimal Corelay Mesh example: router + one agent + real LLM, prints a reply.",
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0",
     "@corelay/mesh-core": "0.0.1",
+    "@corelay/mesh-llm": "0.0.1",
     "openai": "^4.77.0"
   },
   "devDependencies": {
