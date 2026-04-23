@@ -12,3 +12,4 @@ export {
   type ResultMerger,
   type TaskDecomposer,
 } from "./hierarchy.js";
+export { managerPeer, type ManagerPeerConfig } from "./manager-peer.js";
