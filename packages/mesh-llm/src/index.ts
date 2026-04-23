@@ -1,2 +1,1 @@
-// Package entrypoint. Exports are added as runtime code lands.
-export {};
+export { LLMRouter, type LLMRouterConfig } from "./router.js";
