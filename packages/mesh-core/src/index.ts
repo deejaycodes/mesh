@@ -25,5 +25,12 @@ export {
 } from "./llm.js";
 export { type AgentConfig } from "./agent-config.js";
 export { Agent, CapabilityError } from "./agent.js";
+export {
+  type Workflow,
+  type WorkflowEvent,
+  type WorkflowStatus,
+  type WorkflowEventKind,
+  type WorkflowEventData,
+} from "./workflow.js";
 
 export const version = "0.0.1";
