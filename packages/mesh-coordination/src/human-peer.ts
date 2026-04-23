@@ -1,3 +1,4 @@
+import { noopTracer, type Tracer } from "@corelay/mesh-observe";
 import type {
   Address,
   Inbox,
@@ -45,6 +46,8 @@ export interface HumanPeerConfig {
    * (or reassigns it to `fallbackAddress`) so the flow doesn't stall.
    */
   escalation?: EscalationPolicy;
+  /** Optional tracer. Defaults to noopTracer. */
+  tracer?: Tracer;
 }
 
 export interface EscalationPolicy {
@@ -87,6 +90,7 @@ export class HumanPeer implements Peer {
   private readonly inbox: Inbox;
   private readonly registry: PeerRegistry;
   private readonly escalation?: EscalationPolicy;
+  private readonly tracer: Tracer;
   private readonly pending = new Map<string, PendingItem>();
   private readonly timers = new Map<string, NodeJS.Timeout>();
 
@@ -95,6 +99,7 @@ export class HumanPeer implements Peer {
     this.inbox = config.inbox;
     this.registry = config.registry;
     this.escalation = config.escalation;
+    this.tracer = config.tracer ?? noopTracer;
   }
 
   /**
@@ -132,9 +137,21 @@ export class HumanPeer implements Peer {
       throw new Error(`HumanPeer ${this.address}: no pending item with id "${itemId}"`);
     }
 
-    const reply = this.buildReply(item.message, action);
-    this.clearItem(itemId);
-    await this.registry.deliver(reply);
+    await this.tracer.span(
+      "coordination.human.respond",
+      {
+        "human.address": this.address,
+        "human.decision": action.decision,
+        "human.actor": action.actor ?? null,
+        "message.id": item.message.id,
+        "message.trace_id": item.message.traceId,
+      },
+      async () => {
+        const reply = this.buildReply(item.message, action);
+        this.clearItem(itemId);
+        await this.registry.deliver(reply);
+      },
+    );
   }
 
   /** Stop all pending escalation timers. Call before shutdown. */
