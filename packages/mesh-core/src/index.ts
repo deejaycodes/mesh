@@ -32,6 +32,7 @@ export {
   type WorkflowEventKind,
   type WorkflowEventData,
 } from "./workflow.js";
+export { type WorkflowRecorder } from "./workflow-recorder.js";
 export { run, type RunOptions, type RunResult } from "./run.js";
 
 export const version = "0.0.1";

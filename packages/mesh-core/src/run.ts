@@ -2,6 +2,7 @@ import type { Address } from "./address.js";
 import type { Message, MessageKind } from "./message.js";
 import type { Peer } from "./peer.js";
 import type { PeerRegistry } from "./peer-registry.js";
+import type { WorkflowRecorder } from "./workflow-recorder.js";
 
 export interface RunOptions {
   /** Override the ephemeral caller address. Useful for channel-driven flows. */
@@ -14,23 +15,33 @@ export interface RunOptions {
   timeoutMs?: number;
   /** Kind of the inbound message. Default "user". */
   kind?: MessageKind;
+  /**
+   * Optional recorder for durable workflow events. If supplied, run() creates
+   * a Workflow, appends events for the initial send + final reply, and marks
+   * the workflow completed/failed at the end.
+   */
+  recorder?: WorkflowRecorder;
 }
 
 export interface RunResult {
   content: string;
   traceId: string;
+  /** Present only when a recorder was supplied. */
+  workflowId?: string;
 }
 
 /**
  * Convenience helper for the common case: send one user message to a root
  * Peer, await the first reply back.
  *
- * Under the hood: registers a one-shot ephemeral Peer to receive the reply,
- * sends the initial message via the registry, resolves on first delivery,
- * rejects on timeout.
+ * If a WorkflowRecorder is supplied, the run is durably recorded:
+ *   - createWorkflow on start
+ *   - message_sent event for the inbound message
+ *   - message_delivered event for the reply
+ *   - updateStatus('completed') on success, 'failed' on timeout or error
  *
- * Not the production entry point — channels (WhatsApp, USSD, Web) drive
- * agents directly. This is for examples, tests, and single-call scripts.
+ * Without a recorder, run() is purely in-memory — the behaviour used by the
+ * hello-agent example and many tests.
  */
 export const run = async (
   registry: PeerRegistry,
@@ -42,6 +53,9 @@ export const run = async (
   const messageId = options.messageId ?? crypto.randomUUID();
   const timeoutMs = options.timeoutMs ?? 30_000;
   const callerAddress = options.from ?? (`ephemeral/${crypto.randomUUID()}` as Address);
+  const recorder = options.recorder;
+
+  const workflow = recorder ? await recorder.createWorkflow(rootAddress) : undefined;
 
   let resolve: (r: RunResult) => void;
   let reject: (e: Error) => void;
@@ -53,7 +67,18 @@ export const run = async (
   const caller: Peer = {
     address: callerAddress,
     async send(message) {
-      resolve({ content: message.content, traceId: message.traceId });
+      if (recorder && workflow) {
+        await recorder.appendEvent(workflow.id, "message_delivered", {
+          kind: "message_delivered",
+          messageId: message.id,
+          to: message.to,
+        });
+      }
+      resolve({
+        content: message.content,
+        traceId: message.traceId,
+        ...(workflow && { workflowId: workflow.id }),
+      });
     },
   };
   registry.register(caller);
@@ -74,9 +99,24 @@ export const run = async (
   };
 
   try {
+    if (recorder && workflow) {
+      await recorder.appendEvent(workflow.id, "message_sent", {
+        kind: "message_sent",
+        message: initial,
+      });
+    }
     await registry.deliver(initial);
     const result = await replyPromise;
+    if (recorder && workflow) {
+      await recorder.updateStatus(workflow.id, "completed");
+    }
     return result;
+  } catch (err) {
+    if (recorder && workflow) {
+      const message = err instanceof Error ? err.message : String(err);
+      await recorder.updateStatus(workflow.id, "failed", message).catch(() => {});
+    }
+    throw err;
   } finally {
     clearTimeout(timer);
     registry.unregister(callerAddress);
