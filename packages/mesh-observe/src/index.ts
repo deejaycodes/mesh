@@ -1,2 +1,6 @@
-// Package entrypoint. Exports land as each piece is added.
-export {};
+export {
+  noopTracer,
+  type SpanAttributes,
+  type SpanContext,
+  type Tracer,
+} from "./tracer.js";
