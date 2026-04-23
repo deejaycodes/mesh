@@ -7,3 +7,8 @@ export {
   PostgresInbox,
   type PostgresInboxConfig,
 } from "./postgres-inbox.js";
+export {
+  sweepStaleWorkflows,
+  type SweepStaleWorkflowsConfig,
+  type SweepStaleWorkflowsResult,
+} from "./sweeper.js";
