@@ -1,3 +1,4 @@
+import { noopTracer, type Tracer } from "@corelay/mesh-observe";
 import type {
   Address,
   LLMClient,
@@ -59,6 +60,8 @@ export interface HierarchyConfig {
   timeoutMs?: number;
   /** Run workers in parallel (default) or sequentially. */
   mode?: "parallel" | "sequential";
+  /** Optional tracer. Defaults to noopTracer. */
+  tracer?: Tracer;
 }
 
 export interface HierarchyResult {
@@ -84,9 +87,32 @@ export interface HierarchyResult {
  * the call.
  */
 export class Hierarchy {
-  constructor(private readonly config: HierarchyConfig) {}
+  private readonly tracer: Tracer;
+
+  constructor(private readonly config: HierarchyConfig) {
+    this.tracer = config.tracer ?? noopTracer;
+  }
 
   async run(params: { userMessage: string; from: Address }): Promise<HierarchyResult> {
+    return this.tracer.span(
+      "coordination.hierarchy",
+      {
+        "hierarchy.workers_configured": this.config.workers.length,
+        "hierarchy.mode": this.config.mode ?? "parallel",
+        "hierarchy.trace_id": this.config.traceId,
+      },
+      async (ctx) => {
+        const result = await this.runInner(params);
+        ctx.setAttributes({
+          "hierarchy.contributed": result.contributions.length,
+          "hierarchy.missed": result.missed.length,
+        });
+        return result;
+      },
+    );
+  }
+
+  private async runInner(params: { userMessage: string; from: Address }): Promise<HierarchyResult> {
     const { userMessage, from } = params;
     const {
       workers,
