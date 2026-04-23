@@ -1,2 +1,5 @@
-// Package entrypoint. Exports land as runtime code is added.
-export {};
+export { type Pool } from "pg";
+export {
+  WorkflowStore,
+  type WorkflowStoreConfig,
+} from "./workflow-store.js";
