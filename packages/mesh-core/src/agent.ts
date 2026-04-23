@@ -1,29 +1,29 @@
+import type { Address } from "./address.js";
 import type { AgentConfig } from "./agent-config.js";
 import type { Inbox } from "./inbox.js";
 import type { LLMClient } from "./llm.js";
 import type { Message } from "./message.js";
 import type { Peer } from "./peer.js";
-import type { Address } from "./address.js";
+import type { PeerRegistry } from "./peer-registry.js";
 
 /**
- * Day 3 Agent — minimal peer that receives a message, calls the LLM with the
- * system prompt + the user message, and exposes the last reply.
+ * Agent — a peer that receives messages via its Inbox, calls the LLM, and
+ * delivers the reply back to the sender through the PeerRegistry.
  *
- * Deliberately incomplete:
- *   - No PeerRegistry yet (Day 4). Replies are stashed on `lastReply` so tests
- *     can assert on them without a routing layer.
- *   - No tool calls. No memory. No critic, learnings, guardrails. Those layers
- *     come later in the week and in subsequent weeks.
- *   - Single-turn: one inbound message → one LLM call → one reply.
+ * Day 4: replies route through the PeerRegistry instead of being stashed on
+ * the agent. This is the first step toward multi-agent coordination — an
+ * agent can now reply to any other registered peer.
+ *
+ * Still deliberately minimal: no tool calls, no memory, no critic, no
+ * learnings. Those arrive as separate primitives in later weeks.
  */
 export class Agent implements Peer {
-  public lastReply?: Message;
-
   constructor(
     public readonly address: Address,
     private readonly config: AgentConfig,
     private readonly llm: LLMClient,
     private readonly inbox: Inbox,
+    private readonly registry: PeerRegistry,
   ) {}
 
   async start(): Promise<void> {
@@ -44,7 +44,7 @@ export class Agent implements Peer {
       maxTokens: this.config.maxResponseTokens,
     });
 
-    this.lastReply = {
+    const reply: Message = {
       id: `${message.id}-reply`,
       from: this.address,
       to: message.from,
@@ -53,5 +53,7 @@ export class Agent implements Peer {
       traceId: message.traceId,
       createdAt: Date.now(),
     };
+
+    await this.registry.deliver(reply);
   }
 }

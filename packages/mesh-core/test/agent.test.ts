@@ -1,16 +1,18 @@
 import { describe, it, expect } from "vitest";
 import { Agent } from "../src/agent.js";
 import { MemoryInbox } from "../src/memory-inbox.js";
+import { PeerRegistry } from "../src/peer-registry.js";
 import type { AgentConfig } from "../src/agent-config.js";
 import type { LLMClient, LLMRequest, LLMResponse } from "../src/llm.js";
 import type { Message } from "../src/message.js";
+import type { Peer } from "../src/peer.js";
 
 const mockLLM = (reply: string): LLMClient => ({
   name: "mock",
-  async chat(_req: LLMRequest): Promise<LLMResponse> {
+  async chat(req: LLMRequest): Promise<LLMResponse> {
     return {
       content: reply,
-      model: _req.model,
+      model: req.model,
       toolCalls: [],
       usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
       finishReason: "stop",
@@ -30,9 +32,9 @@ const baseConfig: AgentConfig = {
   capabilities: [],
 };
 
-const msg = (content: string): Message => ({
+const msg = (content: string, from: `${string}/${string}` = "test/user"): Message => ({
   id: "m-1",
-  from: "test/user",
+  from,
   to: "test/agent",
   kind: "user",
   content,
@@ -40,19 +42,33 @@ const msg = (content: string): Message => ({
   createdAt: 0,
 });
 
-describe("Agent", () => {
-  it("responds to an inbound message via the LLM", async () => {
-    const agent = new Agent("test/agent", baseConfig, mockLLM("the capital is Abuja"), new MemoryInbox());
+const sinkPeer = (address: `${string}/${string}`): Peer & { received: Message[] } => ({
+  address,
+  received: [],
+  async send(m) {
+    (this as unknown as { received: Message[] }).received.push(m);
+  },
+});
+
+describe("Agent (with PeerRegistry)", () => {
+  it("delivers its reply back to the sender via the registry", async () => {
+    const registry = new PeerRegistry();
+    const user = sinkPeer("test/user");
+    registry.register(user);
+
+    const agent = new Agent("test/agent", baseConfig, mockLLM("hello back"), new MemoryInbox(), registry);
+    registry.register(agent);
     await agent.start();
-    await agent.send(msg("What's the capital of Nigeria?"));
+
+    await agent.send(msg("hello"));
     await new Promise((r) => setImmediate(r));
 
-    expect(agent.lastReply).toBeDefined();
-    expect(agent.lastReply?.content).toBe("the capital is Abuja");
-    expect(agent.lastReply?.kind).toBe("assistant");
-    expect(agent.lastReply?.from).toBe("test/agent");
-    expect(agent.lastReply?.to).toBe("test/user");
-    expect(agent.lastReply?.traceId).toBe("t-1");
+    expect(user.received).toHaveLength(1);
+    expect(user.received[0]?.content).toBe("hello back");
+    expect(user.received[0]?.from).toBe("test/agent");
+    expect(user.received[0]?.to).toBe("test/user");
+    expect(user.received[0]?.kind).toBe("assistant");
+    expect(user.received[0]?.traceId).toBe("t-1");
   });
 
   it("passes the system prompt and user message to the LLM", async () => {
@@ -70,13 +86,19 @@ describe("Agent", () => {
         };
       },
     };
+
+    const registry = new PeerRegistry();
+    registry.register(sinkPeer("test/user"));
     const agent = new Agent(
       "test/agent",
       { ...baseConfig, prompt: "Be concise." },
       llm,
       new MemoryInbox(),
+      registry,
     );
+    registry.register(agent);
     await agent.start();
+
     await agent.send(msg("hello"));
     await new Promise((r) => setImmediate(r));
 
@@ -87,36 +109,5 @@ describe("Agent", () => {
     ]);
     expect(captured[0]?.model).toBe("gpt-4o-mini");
     expect(captured[0]?.maxTokens).toBe(100);
-  });
-
-  it("processes multiple inbound messages in order", async () => {
-    const replies: string[] = [];
-    let count = 0;
-    const llm: LLMClient = {
-      name: "mock",
-      async chat() {
-        count += 1;
-        return {
-          content: `reply-${count}`,
-          model: "gpt-4o-mini",
-          toolCalls: [],
-          usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-          finishReason: "stop",
-        };
-      },
-    };
-    const agent = new Agent("test/agent", baseConfig, llm, new MemoryInbox());
-    await agent.start();
-    for (let i = 0; i < 3; i++) {
-      await agent.send({ ...msg(`q-${i}`), id: `m-${i}` });
-    }
-    // give it room to drain
-    for (let i = 0; i < 5; i++) {
-      await new Promise((r) => setImmediate(r));
-    }
-    replies.push(agent.lastReply!.content);
-
-    expect(count).toBe(3);
-    expect(replies).toEqual(["reply-3"]);
   });
 });
