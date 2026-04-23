@@ -14,5 +14,12 @@ export {
   type ToolCall,
   type ToolResult,
 } from "./tool.js";
+export {
+  type LLMClient,
+  type LLMMessage,
+  type LLMRequest,
+  type LLMResponse,
+  type TokenUsage,
+} from "./llm.js";
 
 export const version = "0.0.1";
