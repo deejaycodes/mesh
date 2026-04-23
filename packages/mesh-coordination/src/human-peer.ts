@@ -39,6 +39,26 @@ export interface HumanPeerConfig {
   inbox: Inbox;
   /** Registry used to deliver responses back to the caller. */
   registry: PeerRegistry;
+  /**
+   * Optional escalation policy: if a worklist item isn't answered within
+   * `timeoutMs`, the HumanPeer automatically delivers a synthetic reply
+   * (or reassigns it to `fallbackAddress`) so the flow doesn't stall.
+   */
+  escalation?: EscalationPolicy;
+}
+
+export interface EscalationPolicy {
+  timeoutMs: number;
+  /**
+   * - `reject` (default) — deliver a rejection to the caller with
+   *   `reason` as content.
+   * - `reassign` — forward the original content to `fallbackAddress`.
+   */
+  onTimeout?: "reject" | "reassign";
+  /** Reassign target. Required when `onTimeout === 'reassign'`. */
+  fallbackAddress?: Address;
+  /** Reason surfaced in the escalation reply. Default: "Human review timed out." */
+  reason?: string;
 }
 
 /**
@@ -66,12 +86,15 @@ export class HumanPeer implements Peer {
   readonly address: Address;
   private readonly inbox: Inbox;
   private readonly registry: PeerRegistry;
+  private readonly escalation?: EscalationPolicy;
   private readonly pending = new Map<string, PendingItem>();
+  private readonly timers = new Map<string, NodeJS.Timeout>();
 
   constructor(config: HumanPeerConfig) {
     this.address = config.address;
     this.inbox = config.inbox;
     this.registry = config.registry;
+    this.escalation = config.escalation;
   }
 
   /**
@@ -85,6 +108,7 @@ export class HumanPeer implements Peer {
         message,
         receivedAt: Date.now(),
       });
+      this.scheduleEscalation(message);
     });
   }
 
@@ -109,8 +133,62 @@ export class HumanPeer implements Peer {
     }
 
     const reply = this.buildReply(item.message, action);
-    this.pending.delete(itemId);
+    this.clearItem(itemId);
     await this.registry.deliver(reply);
+  }
+
+  /** Stop all pending escalation timers. Call before shutdown. */
+  stop(): void {
+    for (const timer of this.timers.values()) clearTimeout(timer);
+    this.timers.clear();
+  }
+
+  private scheduleEscalation(message: Message): void {
+    if (!this.escalation) return;
+    const timer = setTimeout(() => {
+      void this.escalate(message.id).catch(() => {
+        // Best-effort escalation; swallow to avoid unhandled rejections in the
+        // timer callback. Production telemetry would log here.
+      });
+    }, this.escalation.timeoutMs);
+    this.timers.set(message.id, timer);
+  }
+
+  private async escalate(itemId: string): Promise<void> {
+    const item = this.pending.get(itemId);
+    if (!item || !this.escalation) return;
+
+    const mode = this.escalation.onTimeout ?? "reject";
+    const reason = this.escalation.reason ?? "Human review timed out.";
+
+    if (mode === "reassign") {
+      if (!this.escalation.fallbackAddress) {
+        throw new Error(
+          `HumanPeer ${this.address}: escalation onTimeout='reassign' requires fallbackAddress`,
+        );
+      }
+      await this.respond(itemId, {
+        decision: "reassign",
+        reassignTo: this.escalation.fallbackAddress,
+        actor: "system:escalation",
+      });
+      return;
+    }
+
+    await this.respond(itemId, {
+      decision: "reject",
+      content: reason,
+      actor: "system:escalation",
+    });
+  }
+
+  private clearItem(itemId: string): void {
+    this.pending.delete(itemId);
+    const timer = this.timers.get(itemId);
+    if (timer) {
+      clearTimeout(timer);
+      this.timers.delete(itemId);
+    }
   }
 
   private buildReply(original: Message, action: HumanAction): Message {

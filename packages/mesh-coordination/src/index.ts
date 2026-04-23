@@ -15,6 +15,7 @@ export {
 export { managerPeer, type ManagerPeerConfig } from "./manager-peer.js";
 export {
   HumanPeer,
+  type EscalationPolicy,
   type HumanAction,
   type HumanDecision,
   type HumanPeerConfig,
