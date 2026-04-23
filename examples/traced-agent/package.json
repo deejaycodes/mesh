@@ -1,0 +1,24 @@
+{
+  "name": "@mesh-examples/traced-agent",
+  "version": "0.0.1",
+  "private": true,
+  "description": "hello-agent with OpenTelemetry tracing wired to a console exporter.",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0",
+    "@corelay/mesh-core": "0.0.1",
+    "@corelay/mesh-llm": "0.0.1",
+    "@corelay/mesh-observe": "0.0.1",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/context-async-hooks": "^1.30.0",
+    "@opentelemetry/sdk-trace-base": "^1.30.0",
+    "openai": "^4.77.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.0"
+  }
+}
