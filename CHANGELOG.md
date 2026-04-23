@@ -8,6 +8,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 
 ### Added
 
+- **Week 2 · LLM routing:** new `@corelay/mesh-llm` package.
+  - `LLMRouter` — composes a primary provider and ordered fallbacks; implements `LLMClient` so it drops into any Agent.
+  - `OpenAIClient` — adapts the OpenAI SDK (tool calls, usage, finish reasons).
+  - `AnthropicClient` — adapts the Anthropic SDK, handles system-message concatenation and tool_result translation.
+  - `BedrockClient` — adapts AWS Bedrock's InvokeModelCommand for Anthropic Claude models. Non-Claude model ids throw a clear error until Nova support is added.
+  - All SDKs are optional peer dependencies; install only the providers you use.
+  - 25 unit tests exercising the router and each provider via mock SDKs.
+  - `examples/hello-agent` now uses the router — primary OpenAI, fallback Anthropic, both optional at runtime.
+
 - **Post-Week-1 cleanup:** closing the gaps flagged at the end of Week 1.
   - `WorkflowRecorder` interface in `@corelay/mesh-core` — write-side contract for durable workflows.
   - `run()` gained an optional `recorder` parameter. When supplied, it creates a workflow, records message_sent + message_delivered events, and marks completed/failed on terminal outcomes.
