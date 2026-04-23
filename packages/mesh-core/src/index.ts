@@ -21,5 +21,6 @@ export {
   type LLMResponse,
   type TokenUsage,
 } from "./llm.js";
+export { type AgentConfig } from "./agent-config.js";
 
 export const version = "0.0.1";
