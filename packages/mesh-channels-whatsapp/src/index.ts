@@ -6,3 +6,9 @@ export {
   type UserPeerConfig,
   type WhatsAppClientConfig,
 } from "./client.js";
+export {
+  handleWebhook,
+  type HandleWebhookConfig,
+  type WebhookRequest,
+  type WebhookResponse,
+} from "./webhook.js";
