@@ -1,0 +1,25 @@
+{
+  "name": "corelay-mesh",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Corelay Mesh — open-source multi-agent fabric. Peer-based, durably-executed, coordination-pattern-first.",
+  "license": "MIT",
+  "author": "Corelay Ltd",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@10.9.0"
+}
