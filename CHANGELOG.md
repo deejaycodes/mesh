@@ -8,6 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 
 ### Added
 
+- **Day 4 (Week 1):** Address-based routing and capability enforcement.
+  - `PeerRegistry` — in-process routing keyed by Address with `UnknownPeerError` for misses.
+  - `Agent` refactored to route replies via the registry (removing the Day 3 `lastReply` stash).
+  - `CapabilityError` — thrown when an Agent tries to send to a peer address it has no `PeerCapability` for.
+  - Two-agent tests proving address-based coordination end-to-end.
 - **Day 3 (Week 1):** First runtime code.
   - `MemoryInbox` — single-process `Inbox` implementation; delivers messages in append order, resilient to handler exceptions.
   - `Agent` — minimal peer that reads one message, calls the configured `LLMClient`, and stashes `lastReply`. No tools, memory, critic, or registry yet.
