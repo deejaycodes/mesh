@@ -8,6 +8,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 
 ### Added
 
+- **Week 2 · Observability (part 1):** new `@corelay/mesh-observe` package + Agent instrumentation.
+  - `Tracer` interface — tiny contract (`span(name, attrs, fn)`) consumed by instrumented Mesh primitives. `SpanContext` lets the body `setAttribute(s)`, `recordException`, and `setStatus`. Attributes are narrowly typed.
+  - `noopTracer` — default. Runs the function, records nothing. Means "no instrumentation" is the same code path as instrumented code, just cheaper.
+  - `OTelTracer` — backed by `@opentelemetry/api`, uses `startActiveSpan` so nested spans propagate through the OTel context automatically. Exceptions record as span events with status=ERROR before propagating.
+  - `@opentelemetry/api` is an optional peer dependency; consumers who don't want real OTel ship with just `noopTracer`.
+  - Tests: `Tracer` contract tests (runs against `noopTracer`, extensible to any implementation) plus OTel-specific span-shape tests using `InMemorySpanExporter`.
+  - **Agent instrumentation**: `Agent` constructor gains `AgentOptions.tracer`. Emits `agent.handle` (outer) and `llm.chat` (inner) spans with useful attributes: address, model, provider, prompt/completion/total tokens, finish reason, message trace id. Non-breaking — defaults to `noopTracer`.
+
 - **Week 2 · WhatsApp channel:** new `@corelay/mesh-channels-whatsapp` package.
   - `parseWebhookBody` + `toMessage` — Meta Cloud API webhook payload → `@corelay/mesh-core` `Message`. Text-only in Week 2; malformed or non-text events return empty without throwing.
   - `WhatsAppClient.sendText` — thin POST to Meta's `/messages` endpoint with injectable `fetch` and configurable Graph API version.
