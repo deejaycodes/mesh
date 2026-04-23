@@ -9,5 +9,10 @@ export {
   type ChannelCapability,
   type ChannelName,
 } from "./capability.js";
+export {
+  type ToolDefinition,
+  type ToolCall,
+  type ToolResult,
+} from "./tool.js";
 
 export const version = "0.0.1";
