@@ -3,6 +3,7 @@ export { type Message, type MessageKind } from "./message.js";
 export { type Peer } from "./peer.js";
 export { type Inbox, type MessageHandler } from "./inbox.js";
 export { MemoryInbox } from "./memory-inbox.js";
+export { PeerRegistry, UnknownPeerError } from "./peer-registry.js";
 export {
   type Capability,
   type ToolCapability,
