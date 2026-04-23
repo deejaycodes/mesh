@@ -8,6 +8,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 
 ### Added
 
+- **Week 2 acceptance gate — `examples/safevoice-triage`:** every Week 2 primitive composed into one end-to-end flow.
+  - Normal-risk scenario: `handleWebhook` → `managerPeer` with `LLMDecomposer` + `LLMMerger` → safety-planner + service-finder worker agents in parallel → merged reply → `withCritic` against triage guardrails → `UserPeer` outbound (captured via stubbed `fetch`).
+  - High-risk scenario: keyword classifier → inbound routed to `HumanPeer` caseworker worklist → simulated caseworker `edit` decision → Silent-Solution guidance delivered back to the user.
+  - OpenTelemetry traces printed via `ConsoleSpanExporter`: `agent.handle`, `llm.chat`, `coordination.hierarchy`, `coordination.critic` + `.critique` + `.revise`, `coordination.human.respond`. Full parent-child chain preserved.
+  - Runs with only `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY`. No Meta developer account or Postgres required for the demo.
+
 - **Week 2 · Resume after crash:** durability proven end-to-end + workflow reconciler.
   - Two new `PostgresInbox` integration tests prove the crash-and-resume shape: a restarted consumer picks up unclaimed rows from a crashed predecessor, and a new consumer picks up messages whose handler was killed mid-flight. Durability guarantee is at-least-once; handlers must be idempotent on `Message.id`.
   - `sweepStaleWorkflows` — background reconciler that marks `running` workflows as `failed` if they haven't been updated past a configurable threshold (default 5 minutes). Concurrency-safe, bounded per-call limit, runs on whatever schedule the caller prefers (cron, setInterval, Temporal).
