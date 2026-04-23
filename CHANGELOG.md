@@ -8,6 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 
 ### Added
 
+- **Week 2 · Critic primitive:** new `@corelay/mesh-coordination` package.
+  - `Critic` — dialectical thesis → antithesis → synthesis review. Injectable `LLMClient` and model id, configurable `maxCycles` (default 2), `autoApproveBelowChars` short-circuit (default 50). Returns `CriticVerdict { content, cycles, revised, lastCritique }`.
+  - `withCritic(config)` — composition helper that returns a `Peer` which critiques every inbound message and forwards the (possibly revised) result to a configured `forwardTo` address. `Message.metadata.critic` records `{ revised, cycles, lastCritique }` for traces.
+  - 8 tests: 6 unit tests for `Critic` (auto-approve, first-cycle approve, revise-then-approve, max-cycles fallback, guardrail injection, system-prompt separation); 2 integration tests exercising Agent + `withCritic` end-to-end.
+
 - **Week 2 · LLM routing:** new `@corelay/mesh-llm` package.
   - `LLMRouter` — composes a primary provider and ordered fallbacks; implements `LLMClient` so it drops into any Agent.
   - `OpenAIClient` — adapts the OpenAI SDK (tool calls, usage, finish reasons).
