@@ -101,7 +101,7 @@ For a full working example with LLM fallbacks, see [`examples/hello-agent`](./ex
 | `@corelay/mesh-observe` | `Tracer` interface, `noopTracer`, OpenTelemetry implementation | ✅ Shipping |
 | `@corelay/mesh-eval` | Eval suites, deploy-gates, shadow/canary | ✅ Shipping v0.1 |
 | `@corelay/mesh-compose` | Authoring agent (Corelay Compose) | ✅ Shipping v0.2 |
-| `@corelay/mesh-mcp` | MCP server side (client side already covered by the ecosystem) | 🛠 Q1 2026 |
+| `@corelay/mesh-mcp` | MCP server — expose agents as tools for Claude Desktop / Cursor / ChatGPT | ✅ Shipping v0.1 |
 
 ## Durable execution
 
