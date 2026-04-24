@@ -13,13 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: https://registry.npmjs.org
       - run: npm ci
       - run: npm run build
       - run: npm test
@@ -36,14 +34,13 @@ jobs:
 
       - name: Publish (real)
         if: ${{ !inputs.dry_run }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          # Ensure .npmrc is correctly configured
-          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          cat ~/.npmrc | head -c 40
+          echo "..."
           for pkg in packages/mesh-*/; do
             echo "--- Publishing: $(basename $pkg) ---"
             cd "$pkg"
-            npm publish --access public 2>&1 | tail -5
+            npm publish --access public 2>&1 | tail -8
             cd ../..
           done
