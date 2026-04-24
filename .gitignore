@@ -7,3 +7,5 @@ tsconfig.vitest-temp.json
 .env.local
 .DS_Store
 coverage/
+docs-site/node_modules
+docs-site/dist
