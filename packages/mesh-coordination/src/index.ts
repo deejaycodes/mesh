@@ -21,3 +21,11 @@ export {
   type HumanPeerConfig,
   type PendingItem,
 } from "./human-peer.js";
+export {
+  runDebate,
+  type DebateConfig,
+  type DebateJudge,
+  type DebateParticipant,
+  type DebateResult,
+  type DebateTurn,
+} from "./debate.js";
