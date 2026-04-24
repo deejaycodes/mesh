@@ -39,9 +39,11 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          # Ensure .npmrc is correctly configured
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
           for pkg in packages/mesh-*/; do
             echo "--- Publishing: $(basename $pkg) ---"
             cd "$pkg"
-            npm publish --access public --provenance 2>&1 | tail -5
+            npm publish --access public 2>&1 | tail -5
             cd ../..
           done
