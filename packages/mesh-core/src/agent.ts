@@ -7,10 +7,6 @@ import type { Message } from "./message.js";
 import type { Peer } from "./peer.js";
 import type { PeerRegistry } from "./peer-registry.js";
 
-/**
- * Raised when an Agent tries to send a message to a peer address it does not
- * have a PeerCapability for. Stops accidental or malicious cross-peer sends.
- */
 export class CapabilityError extends Error {
   constructor(
     public readonly agent: Address,
@@ -21,24 +17,25 @@ export class CapabilityError extends Error {
   }
 }
 
+/**
+ * Optional hook called after the LLM responds but before the reply is
+ * delivered. Return the (possibly revised) content. Throw to block delivery.
+ */
+export type ResponseReviewer = (params: {
+  userMessage: string;
+  agentResponse: string;
+  systemPrompt: string;
+}) => Promise<string>;
+
 export interface AgentOptions {
-  /** Optional tracer. Defaults to noopTracer. */
   tracer?: Tracer;
+  /** If set, every LLM response passes through this reviewer before send. */
+  reviewer?: ResponseReviewer;
 }
 
-/**
- * Agent — a peer that receives messages via its Inbox, calls the LLM, and
- * delivers the reply back to the sender through the PeerRegistry.
- *
- * Every outbound peer message is checked against the agent's declared
- * capabilities. The agent may only send to addresses explicitly granted via
- * a `PeerCapability`.
- *
- * Still deliberately minimal: no tool calls, no memory, no critic, no
- * learnings. Those arrive as separate primitives in later weeks.
- */
 export class Agent implements Peer {
   private readonly tracer: Tracer;
+  private readonly reviewer: ResponseReviewer | undefined;
 
   constructor(
     public readonly address: Address,
@@ -49,6 +46,7 @@ export class Agent implements Peer {
     options: AgentOptions = {},
   ) {
     this.tracer = options.tracer ?? noopTracer;
+    this.reviewer = options.reviewer;
   }
 
   async start(): Promise<void> {
@@ -96,12 +94,31 @@ export class Agent implements Peer {
           },
         );
 
+        let content = response.content;
+
+        // Critic / reviewer gate — revise before delivery
+        if (this.reviewer) {
+          content = await this.tracer.span(
+            "agent.review",
+            { "agent.address": this.address },
+            async (reviewCtx) => {
+              const revised = await this.reviewer!({
+                userMessage: message.content,
+                agentResponse: content,
+                systemPrompt: this.config.prompt,
+              });
+              reviewCtx.setAttribute("agent.review.revised", revised !== response.content);
+              return revised;
+            },
+          );
+        }
+
         const reply: Message = {
           id: `${message.id}-reply`,
           from: this.address,
           to: message.from,
           kind: "assistant",
-          content: response.content,
+          content,
           traceId: message.traceId,
           createdAt: Date.now(),
         };

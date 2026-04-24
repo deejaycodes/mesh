@@ -24,7 +24,7 @@ export {
   type TokenUsage,
 } from "./llm.js";
 export { type AgentConfig } from "./agent-config.js";
-export { Agent, CapabilityError, type AgentOptions } from "./agent.js";
+export { Agent, CapabilityError, type AgentOptions, type ResponseReviewer } from "./agent.js";
 export {
   type Workflow,
   type WorkflowEvent,
