@@ -2,6 +2,8 @@ export { compose } from "./compose.js";
 export { approve, reject } from "./review.js";
 export { createLlmAuthor, renderSpec } from "./author.js";
 export { createCriticAuthor } from "./critic-author.js";
+export { composeWorkflow } from "./workflow.js";
+export type { WorkflowSpec, WorkflowDraft } from "./workflow.js";
 export type { CreateLlmAuthorOptions } from "./author.js";
 export type {
   ComposeAuthor,
