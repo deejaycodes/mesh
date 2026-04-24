@@ -1,0 +1,19 @@
+{
+  "name": "@mesh-examples/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Example: expose a Mesh agent as an MCP tool for Claude Desktop / Cursor.",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@corelay/mesh-core": "0.1.0",
+    "@corelay/mesh-llm": "0.1.0",
+    "@corelay/mesh-mcp": "0.1.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
