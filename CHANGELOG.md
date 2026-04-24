@@ -8,7 +8,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 
 ### Added
 
-- **Week 2 acceptance gate — `examples/safevoice-triage`:** every Week 2 primitive composed into one end-to-end flow.
+- **@corelay/mesh-compose v0.3** — Critic-wrapped authoring via `createCriticAuthor()`. Drafts are automatically challenged by the Critic primitive before the reviewer sees them.
+- **@corelay/mesh-eval v0.2** — `compareReports()` for regression detection between eval runs. Cases matched by id; removed cases count as regressions; deploy decision requires zero regressions + candidate gate passed.
+- **@corelay/mesh-mcp v0.1** — MCP server exposing Mesh agents as tools for Claude Desktop / Cursor / ChatGPT. `McpServer` handles initialize, tools/list, tools/call, ping. `mcpToolFromAgent()` wraps any Agent as an MCP tool. `stdioTransport()` for the wire protocol. Zero external dependencies.
+- **@corelay/mesh-coordination: Debate primitive** — N participants argue across configurable rounds with three judge kinds (rule, human, LLM). Full exchange returned for audit.
+- **@corelay/mesh-compose v0.2** — `createLlmAuthor()` wraps any LLMClient as a Compose author. `renderSpec()` deterministically renders a ComposeSpec as the prompt the author sees.
+- **@corelay/mesh-compose v0.1** — `compose()`, `approve()`, `reject()`. ComposeSpec → ComposeDraft with per-field provenance tracking. Structural impossibility of auto-save.
+- **@corelay/mesh-eval v0.1** — `runEval()` suite runner with four assertion kinds (contains, notContains, matches, judged), `createLlmJudge()`, weighted scoring, gate decisions.
+- **Compose → Agent → Eval integration test** — proves the full deploy story end-to-end in one test.
+- **Flagship README** — working quick-start code, package table, architecture diagram, "how this compares" section, contributing/security/versioning.
+- **docs/index.md** — entry point for mesh.corelay.dev linking every package, example, guide, and concept.
+
+### Changed
+
+- All `@corelay/*` packages now have `repository`, `homepage`, `bugs`, `author` metadata pointing to `corelay-dev/mesh`.
+- `@loom-examples/hello-agent` renamed to `@mesh-examples/hello-agent`.
+- Repo transferred from `deejaycodes/mesh` to `corelay-dev/mesh`.
+
+### Stats
+
+- **9 packages**, **232+ tests**, CI green on every push.
+- **5 coordination patterns**: Pipeline, Critic, Debate, Hierarchy, Human-in-the-Loop.
+
+---
+
+### Previously shipped (Week 1-2)
   - Normal-risk scenario: `handleWebhook` → `managerPeer` with `LLMDecomposer` + `LLMMerger` → safety-planner + service-finder worker agents in parallel → merged reply → `withCritic` against triage guardrails → `UserPeer` outbound (captured via stubbed `fetch`).
   - High-risk scenario: keyword classifier → inbound routed to `HumanPeer` caseworker worklist → simulated caseworker `edit` decision → Silent-Solution guidance delivered back to the user.
   - OpenTelemetry traces printed via `ConsoleSpanExporter`: `agent.handle`, `llm.chat`, `coordination.hierarchy`, `coordination.critic` + `.critique` + `.revise`, `coordination.human.respond`. Full parent-child chain preserved.
