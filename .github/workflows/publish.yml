@@ -20,7 +20,8 @@ jobs:
           node-version: 20
       - run: npm ci
       - run: npm run build
-      - run: npm test
+      - name: Test (skip Postgres integration tests — no Docker in this runner)
+        run: SKIP_INTEGRATION=true npm test
 
       - name: Publish (dry run)
         if: ${{ inputs.dry_run }}

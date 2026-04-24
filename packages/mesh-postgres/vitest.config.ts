@@ -2,7 +2,9 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["test/**/*.test.ts"],
+    include: process.env.SKIP_INTEGRATION
+      ? ["test/smoke.test.ts"]
+      : ["test/**/*.test.ts"],
     environment: "node",
     testTimeout: 120_000,
     hookTimeout: 120_000,
