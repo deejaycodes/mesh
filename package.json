@@ -1,7 +1,7 @@
 {
   "name": "corelay-mesh",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Corelay Mesh — open-source multi-agent fabric. Peer-based, durably-executed, coordination-pattern-first.",
   "license": "MIT",
   "author": "Corelay Ltd",

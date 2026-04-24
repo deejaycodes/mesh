@@ -1,6 +1,6 @@
 {
   "name": "@corelay/mesh-core",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Corelay Mesh core — Agents, Peers, Inboxes, Capabilities, Workflows, Tools.",
   "license": "MIT",
   "author": "Corelay Ltd",
@@ -33,7 +33,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@corelay/mesh-observe": "0.0.1"
+    "@corelay/mesh-observe": "0.1.0"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
