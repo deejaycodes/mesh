@@ -24,19 +24,12 @@ npm install @corelay/mesh-compose
 ## Use
 
 ```ts
-import { compose, approve } from "@corelay/mesh-compose";
-import type { ComposeAuthor } from "@corelay/mesh-compose";
+import OpenAI from "openai";
+import { compose, approve, createLlmAuthor } from "@corelay/mesh-compose";
+import { OpenAIClient } from "@corelay/mesh-llm";
 
-// Plug in any LLM; here a mock for illustration.
-const author: ComposeAuthor = {
-  draft: async (spec) => JSON.stringify({
-    name: "safevoice-triage",
-    description: "First-contact triage for survivors.",
-    prompt: "You are a trauma-informed first responder...",
-    welcomeMessage: "You're safe to talk here.",
-    reviewerQuestions: ["No child-safeguarding boundary was specified. Is that intentional?"],
-  }),
-};
+const llm = new OpenAIClient({ client: new OpenAI({ apiKey: process.env.OPENAI_API_KEY! }) });
+const author = createLlmAuthor(llm);
 
 const draft = await compose(
   {
@@ -54,11 +47,15 @@ const config = approve(draft, { prompt: "...a better prompt from the practitione
 // config is an AgentConfig you can now pass to Agent.
 ```
 
-## What's not in v0.1
+You can also plug in a custom `ComposeAuthor` — any object with a
+`draft(spec): Promise<string>` method, returning the JSON draft shape. This
+is what tests do; it's also how you'd back Compose with a different
+provider, an offline model, or a cached draft.
 
-- **A real LLM author** — you plug in your own. A reference implementation using `@corelay/mesh-llm` arrives in v0.2.
-- **Critic-wrapped authoring** — v0.2 will compose Compose with `@corelay/mesh-coordination`'s `withCritic` so the draft is automatically challenged before the reviewer sees it.
-- **Eval generation** — v0.3, once `@corelay/mesh-eval` ships.
+## What's not in v0.2
+
+- **Critic-wrapped authoring** — v0.3 will compose Compose with `@corelay/mesh-coordination`'s `withCritic` so the draft is automatically challenged before the reviewer sees it.
+- **Eval generation** — once `@corelay/mesh-eval` ships.
 - **Workflow authoring** — v1.0. Currently Compose drafts a single agent; soon it will draft multi-agent flows.
 
 ## License
