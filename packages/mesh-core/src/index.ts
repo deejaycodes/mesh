@@ -25,6 +25,8 @@ export {
 } from "./llm.js";
 export { type AgentConfig } from "./agent-config.js";
 export { Agent, CapabilityError, type AgentOptions, type ResponseReviewer } from "./agent.js";
+export { ToolRegistry, type ToolExecutor } from "./tool-executor.js";
+export { MemoryConversationBuffer, type ConversationMemory } from "./memory.js";
 export {
   type Workflow,
   type WorkflowEvent,
@@ -36,4 +38,4 @@ export { type WorkflowRecorder } from "./workflow-recorder.js";
 export { run, type RunOptions, type RunResult } from "./run.js";
 export { canaryPeer, type CanaryConfig } from "./canary.js";
 
-export const version = "0.0.1";
+export const version = "0.1.0";

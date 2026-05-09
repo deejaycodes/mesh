@@ -10,6 +10,8 @@ export interface LLMMessage {
   toolCallId?: string;
   /** Optional name for role="tool" messages. */
   name?: string;
+  /** Present on role="assistant" messages that include tool calls. */
+  toolCalls?: ToolCall[];
 }
 
 export interface LLMRequest {

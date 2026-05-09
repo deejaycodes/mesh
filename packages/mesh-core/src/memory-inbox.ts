@@ -12,13 +12,22 @@ import type { Message } from "./message.js";
  *   - Handler exceptions are caught so they can't deadlock the queue.
  *   - Only one handler is active at a time; calling consume() twice
  *     replaces the previous handler.
+ *   - Backpressure: rejects appends when queue exceeds maxSize.
  */
 export class MemoryInbox implements Inbox {
   private queue: Message[] = [];
   private handler?: MessageHandler;
   private draining = false;
+  private readonly maxSize: number;
+
+  constructor(maxSize = 10_000) {
+    this.maxSize = maxSize;
+  }
 
   async append(message: Message): Promise<void> {
+    if (this.queue.length >= this.maxSize) {
+      throw new Error(`MemoryInbox: backpressure — queue full (${this.maxSize} messages). Message ${message.id} rejected.`);
+    }
     this.queue.push(message);
     if (this.handler && !this.draining) void this.drain();
   }
@@ -26,6 +35,11 @@ export class MemoryInbox implements Inbox {
   async consume(handler: MessageHandler): Promise<void> {
     this.handler = handler;
     if (this.queue.length > 0 && !this.draining) void this.drain();
+  }
+
+  /** Number of messages currently queued. */
+  get size(): number {
+    return this.queue.length;
   }
 
   private async drain(): Promise<void> {

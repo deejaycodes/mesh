@@ -14,21 +14,52 @@ export interface OpenAIClientConfig {
   client: OpenAI;
   /** Logical name. Defaults to "openai". */
   name?: string;
+  /** Max retries on transient errors (429, 500, 502, 503, 504). Default 3. */
+  maxRetries?: number;
 }
 
+const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
+
 /**
- * Wraps the OpenAI SDK as an `LLMClient`. Supports plain chat and tool calls.
+ * Wraps the OpenAI SDK as an `LLMClient`. Supports plain chat, tool calls,
+ * and automatic retry with exponential backoff on transient errors.
  */
 export class OpenAIClient implements LLMClient {
   readonly name: string;
   private readonly client: OpenAI;
+  private readonly maxRetries: number;
 
   constructor(config: OpenAIClientConfig) {
     this.client = config.client;
     this.name = config.name ?? "openai";
+    this.maxRetries = config.maxRetries ?? 3;
   }
 
   async chat(request: LLMRequest): Promise<LLMResponse> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      if (attempt > 0) {
+        await sleep(Math.min(1000 * 2 ** (attempt - 1), 8000));
+      }
+
+      try {
+        return await this.doChat(request);
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+
+        // Check if retryable
+        const status = (err as { status?: number }).status;
+        if (status && !RETRYABLE_STATUS_CODES.has(status)) {
+          throw lastError; // Non-retryable — fail immediately
+        }
+      }
+    }
+
+    throw lastError ?? new Error("OpenAI: max retries exceeded");
+  }
+
+  private async doChat(request: LLMRequest): Promise<LLMResponse> {
     const response = await this.client.chat.completions.create({
       model: request.model,
       messages: request.messages.map((m) => ({
@@ -36,6 +67,13 @@ export class OpenAIClient implements LLMClient {
         content: m.content,
         ...(m.toolCallId !== undefined && { tool_call_id: m.toolCallId }),
         ...(m.name !== undefined && { name: m.name }),
+        ...(m.toolCalls?.length && {
+          tool_calls: m.toolCalls.map((tc) => ({
+            id: tc.id,
+            type: "function" as const,
+            function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
+          })),
+        }),
       })) as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
       max_tokens: request.maxTokens,
       temperature: request.temperature ?? 0.7,
@@ -90,3 +128,7 @@ const toFinishReason = (
   if (reason === "length") return "length";
   return "stop";
 };
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}

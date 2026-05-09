@@ -13,14 +13,24 @@ export interface HandleWebhookConfig {
   routeTo: Address;
   /** Optional: build a traceId per inbound. Default: a new random uuid. */
   makeTraceId?: (inbound: { from: string; messageId: string }) => string;
+  /**
+   * Meta App Secret for webhook signature verification.
+   * If provided, POST requests without a valid X-Hub-Signature-256 are rejected.
+   * Strongly recommended in production.
+   */
+  appSecret?: string;
 }
 
 export interface WebhookRequest {
   method: string;
+  /** Raw body string (required for signature verification). */
+  rawBody?: string;
   /** Parsed JSON body. Caller is responsible for parsing. */
   body?: unknown;
   /** Parsed URL query string. */
   query?: Record<string, string | string[] | undefined>;
+  /** Request headers (lowercase keys). */
+  headers?: Record<string, string | undefined>;
 }
 
 export interface WebhookResponse {
@@ -48,7 +58,16 @@ export const handleWebhook = async (
   request: WebhookRequest,
 ): Promise<WebhookResponse> => {
   if (request.method === "GET") return verify(config.verifyToken, request.query ?? {});
-  if (request.method === "POST") return receive(config, request.body);
+  if (request.method === "POST") {
+    // Signature verification
+    if (config.appSecret && request.rawBody) {
+      const signature = request.headers?.["x-hub-signature-256"];
+      if (!verifySignature(request.rawBody, signature, config.appSecret)) {
+        return { status: 401, body: "Invalid signature" };
+      }
+    }
+    return receive(config, request.body);
+  }
   return { status: 405 };
 };
 
@@ -107,3 +126,14 @@ const receive = async (
 
 const first = (v: string | string[] | undefined): string | undefined =>
   Array.isArray(v) ? v[0] : v;
+
+function verifySignature(rawBody: string, signature: string | undefined, secret: string): boolean {
+  if (!signature) return false;
+  try {
+    const crypto = require("crypto") as typeof import("crypto");
+    const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+    return `sha256=${expected}` === signature;
+  } catch {
+    return false;
+  }
+}

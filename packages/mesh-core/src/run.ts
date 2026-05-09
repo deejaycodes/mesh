@@ -85,7 +85,7 @@ export const run = async (
 
   const timer = setTimeout(() => {
     registry.unregister(callerAddress);
-    reject(new Error(`run() timed out after ${timeoutMs}ms waiting for ${rootAddress}`));
+    reject(new Error(`run() timed out after ${timeoutMs}ms waiting for ${rootAddress}. User message: "${userMessage.slice(0, 100)}"`));
   }, timeoutMs);
 
   const initial: Message = {

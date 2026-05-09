@@ -43,24 +43,35 @@ export const withCritic = (config: CriticPeerConfig): Peer => ({
   async send(message: Message) {
     const userMessage = config.userMessageFor ? config.userMessageFor(message) : message.content;
 
-    const verdict = await config.critic.review({
-      userMessage,
-      agentResponse: message.content,
-      systemPrompt: config.systemPrompt,
-    });
+    let content: string;
+    let criticMetadata: Record<string, unknown>;
+
+    try {
+      const verdict = await config.critic.review({
+        userMessage,
+        agentResponse: message.content,
+        systemPrompt: config.systemPrompt,
+      });
+      content = verdict.content;
+      criticMetadata = {
+        revised: verdict.revised,
+        cycles: verdict.cycles,
+        ...(verdict.lastCritique !== undefined && { lastCritique: verdict.lastCritique }),
+      };
+    } catch {
+      // Critic failed — deliver the original uncritiqued response
+      content = message.content;
+      criticMetadata = { failed: true, revised: false, cycles: 0 };
+    }
 
     const forwarded: Message = {
       ...message,
       id: `${message.id}-critiqued`,
       to: config.forwardTo,
-      content: verdict.content,
+      content,
       metadata: {
         ...(message.metadata ?? {}),
-        critic: {
-          revised: verdict.revised,
-          cycles: verdict.cycles,
-          ...(verdict.lastCritique !== undefined && { lastCritique: verdict.lastCritique }),
-        },
+        critic: criticMetadata,
       },
     };
 

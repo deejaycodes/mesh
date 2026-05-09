@@ -58,6 +58,12 @@ export interface HierarchyConfig {
   collectorAddress: Address;
   /** Max ms to wait for all workers combined. Default 30_000. */
   timeoutMs?: number;
+  /**
+   * Max ms to wait for each individual worker. If a worker doesn't reply
+   * within this time, it's marked as missed and the merge proceeds without it.
+   * If not set, falls back to the global timeoutMs.
+   */
+  perWorkerTimeoutMs?: number;
   /** Run workers in parallel (default) or sequentially. */
   mode?: "parallel" | "sequential";
   /** Optional tracer. Defaults to noopTracer. */

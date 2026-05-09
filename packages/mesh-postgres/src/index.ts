@@ -8,6 +8,9 @@ export {
   type PostgresInboxConfig,
 } from "./postgres-inbox.js";
 export {
+  DistributedPeerRegistry,
+} from "./distributed-registry.js";
+export {
   sweepStaleWorkflows,
   type SweepStaleWorkflowsConfig,
   type SweepStaleWorkflowsResult,
