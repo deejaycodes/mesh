@@ -1,6 +1,5 @@
 import type { Pool } from "pg";
-import type { Address, Message, Peer, MessageHandler } from "@corelay/mesh-core";
-import { PostgresInbox } from "./postgres-inbox.js";
+import type { Address, Message, Peer } from "@corelay/mesh-core";
 
 /**
  * A PeerRegistry that routes messages across processes via Postgres.
@@ -11,9 +10,12 @@ import { PostgresInbox } from "./postgres-inbox.js";
  *
  * This enables multi-pod deployments without Redis or a message broker.
  * Trade-off: cross-pod delivery has polling latency (default 250ms).
+ *
+ * Implements the same interface as mesh-core's PeerRegistry so it's a
+ * drop-in replacement. Pass it anywhere a PeerRegistry is expected.
  */
 export class DistributedPeerRegistry {
-  private readonly localPeers = new Map<Address, Peer>();
+  private readonly peers = new Map<Address, Peer>();
   private readonly pool: Pool;
 
   constructor(pool: Pool) {
@@ -21,19 +23,19 @@ export class DistributedPeerRegistry {
   }
 
   register(peer: Peer): void {
-    this.localPeers.set(peer.address, peer);
+    this.peers.set(peer.address, peer);
   }
 
   unregister(address: Address): void {
-    this.localPeers.delete(address);
+    this.peers.delete(address);
   }
 
   has(address: Address): boolean {
-    return this.localPeers.has(address);
+    return this.peers.has(address);
   }
 
   get(address: Address): Peer | undefined {
-    return this.localPeers.get(address);
+    return this.peers.get(address);
   }
 
   /**
@@ -41,7 +43,7 @@ export class DistributedPeerRegistry {
    * Otherwise, write to the inbox_messages table for cross-pod delivery.
    */
   async deliver(message: Message): Promise<void> {
-    const localPeer = this.localPeers.get(message.to);
+    const localPeer = this.peers.get(message.to);
     if (localPeer) {
       await localPeer.send(message);
       return;

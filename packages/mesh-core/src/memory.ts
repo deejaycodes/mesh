@@ -18,32 +18,48 @@ export interface ConversationMemory {
  * For multi-pod, use a Postgres-backed implementation.
  */
 export class MemoryConversationBuffer implements ConversationMemory {
-  private readonly sessions = new Map<string, LLMMessage[]>();
+  private readonly sessions = new Map<string, { messages: LLMMessage[]; lastAccess: number }>();
   private readonly maxPerSession: number;
+  private readonly maxSessions: number;
 
-  constructor(maxPerSession = 50) {
+  constructor(maxPerSession = 50, maxSessions = 1000) {
     this.maxPerSession = maxPerSession;
+    this.maxSessions = maxSessions;
   }
 
   async append(sessionId: string, message: LLMMessage): Promise<void> {
-    const history = this.sessions.get(sessionId) ?? [];
-    history.push(message);
-    // Evict oldest messages beyond the cap
-    if (history.length > this.maxPerSession) {
-      history.splice(0, history.length - this.maxPerSession);
+    const session = this.sessions.get(sessionId) ?? { messages: [], lastAccess: 0 };
+    session.messages.push(message);
+    session.lastAccess = Date.now();
+    if (session.messages.length > this.maxPerSession) {
+      session.messages.splice(0, session.messages.length - this.maxPerSession);
     }
-    this.sessions.set(sessionId, history);
+    this.sessions.set(sessionId, session);
+    this.evictIfNeeded();
   }
 
   async getHistory(sessionId: string, maxMessages?: number): Promise<LLMMessage[]> {
-    const history = this.sessions.get(sessionId) ?? [];
-    if (maxMessages && history.length > maxMessages) {
-      return history.slice(-maxMessages);
+    const session = this.sessions.get(sessionId);
+    if (!session) return [];
+    session.lastAccess = Date.now();
+    const messages = session.messages;
+    if (maxMessages && messages.length > maxMessages) {
+      return messages.slice(-maxMessages);
     }
-    return [...history];
+    return [...messages];
   }
 
   async clear(sessionId: string): Promise<void> {
     this.sessions.delete(sessionId);
+  }
+
+  private evictIfNeeded(): void {
+    if (this.sessions.size <= this.maxSessions) return;
+    // Evict least recently accessed sessions
+    const entries = [...this.sessions.entries()].sort((a, b) => a[1].lastAccess - b[1].lastAccess);
+    const toEvict = entries.slice(0, this.sessions.size - this.maxSessions);
+    for (const [key] of toEvict) {
+      this.sessions.delete(key);
+    }
   }
 }

@@ -79,8 +79,8 @@ export class PostgresInbox implements Inbox {
     if (!this.handler || this.stopped) return;
 
     // Claim a batch of unconsumed messages for this peer
-    const { rows } = await this.pool.query<{ id: string; payload: string; retry_count: number }>(
-      `SELECT id, payload::text, retry_count
+    const { rows } = await this.pool.query<{ id: string; payload: Message; retry_count: number }>(
+      `SELECT id, payload, retry_count
        FROM inbox_messages
        WHERE peer_address = $1 AND consumed_at IS NULL AND retry_count < $2
        ORDER BY created_at ASC
@@ -91,7 +91,7 @@ export class PostgresInbox implements Inbox {
     for (const row of rows) {
       if (this.stopped) break;
 
-      const message: Message = JSON.parse(row.payload);
+      const message: Message = typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload;
       try {
         await this.handler(message);
         await this.pool.query(
@@ -107,7 +107,7 @@ export class PostgresInbox implements Inbox {
             `INSERT INTO dlq_messages (id, peer_address, payload, original_created_at, failed_at, retry_count)
              VALUES ($1, $2, $3, $4, $5, $6)
              ON CONFLICT (id) DO NOTHING`,
-            [row.id, this.address, row.payload, message.createdAt, Date.now(), newCount],
+            [row.id, this.address, JSON.stringify(message), message.createdAt, Date.now(), newCount],
           );
           await this.pool.query(
             `UPDATE inbox_messages SET consumed_at = $1 WHERE id = $2`,

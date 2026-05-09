@@ -1,4 +1,4 @@
-import type { ToolCall, ToolResult, ToolDefinition } from "./tool.js";
+import type { ToolCall, ToolResult } from "./tool.js";
 
 /**
  * Executes tool calls returned by the LLM.
