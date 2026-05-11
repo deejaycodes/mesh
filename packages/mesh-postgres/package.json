@@ -1,6 +1,6 @@
 {
   "name": "@corelay/mesh-postgres",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Postgres durability for Corelay Mesh: durable workflow store and Inbox.",
   "license": "MIT",
   "author": "Corelay Ltd",
