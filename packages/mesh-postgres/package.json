@@ -33,7 +33,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@corelay/mesh-core": "0.1.0",
+    "@corelay/mesh-core": "0.3.0",
     "pg": "^8.13.0"
   },
   "devDependencies": {
